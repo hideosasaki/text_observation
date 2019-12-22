@@ -1,0 +1,2 @@
+# text_observation
+Vision.frameworkでカメラ画像のテキスト認識を行う
