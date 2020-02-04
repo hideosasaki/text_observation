@@ -73,7 +73,6 @@ class TextObservationViewController: UIViewController {
         let startX = readAreaX * imageSizeRatio
         let startY = readAreaY * imageSizeRatio
 
-        debugPrint(width, height, startX, startY)
         // 切り抜く
         path.move(to: CGPoint(x: startX, y: startY))
         path.addLine(to: CGPoint(x: startX + width, y: startY))
