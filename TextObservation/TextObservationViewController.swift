@@ -9,12 +9,12 @@ class TextObservationViewController: UIViewController {
     private let readAreaWidth: CGFloat = 1080
     private let readAreaHeight: CGFloat = 135
     private var imageSizeRatio: CGFloat = 3.375
-    private var imageSizeWidth: CGFloat = 1080
-    private var imageSizeHeight: CGFloat = 1920
+    private let imageSizeWidth: CGFloat = 1080
+    private let imageSizeHeight: CGFloat = 1920
     
     @IBOutlet weak var previewImageView: UIImageView!
 
-    private var textLabel = UILabel()
+    private let textLabel = UILabel()
     
     private let avCaptureSession = AVCaptureSession()
     
