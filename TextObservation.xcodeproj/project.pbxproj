@@ -13,6 +13,7 @@
 		34998B6923AEFAAF001365E3 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 34998B6723AEFAAF001365E3 /* Main.storyboard */; };
 		34998B6B23AEFAB0001365E3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 34998B6A23AEFAB0001365E3 /* Assets.xcassets */; };
 		34998B6E23AEFAB0001365E3 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 34998B6C23AEFAB0001365E3 /* LaunchScreen.storyboard */; };
+		EA888BCA23E90CDB00043513 /* extentions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA888BC923E90CDB00043513 /* extentions.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +25,7 @@
 		34998B6A23AEFAB0001365E3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		34998B6D23AEFAB0001365E3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		34998B6F23AEFAB0001365E3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		EA888BC923E90CDB00043513 /* extentions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = extentions.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -56,6 +58,7 @@
 		34998B6023AEFAAF001365E3 /* TextObservation */ = {
 			isa = PBXGroup;
 			children = (
+				EA888BC923E90CDB00043513 /* extentions.swift */,
 				34998B6123AEFAAF001365E3 /* AppDelegate.swift */,
 				34998B6323AEFAAF001365E3 /* SceneDelegate.swift */,
 				34998B6523AEFAAF001365E3 /* TextObservationViewController.swift */,
@@ -138,6 +141,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EA888BCA23E90CDB00043513 /* extentions.swift in Sources */,
 				34998B6623AEFAAF001365E3 /* TextObservationViewController.swift in Sources */,
 				34998B6223AEFAAF001365E3 /* AppDelegate.swift in Sources */,
 				34998B6423AEFAAF001365E3 /* SceneDelegate.swift in Sources */,
@@ -285,13 +289,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = R7J487A36R;
+				DEVELOPMENT_TEAM = 84F9M66Q4D;
 				INFOPLIST_FILE = TextObservation/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = test.test.TextObservation;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cloverflavor.TextObservation;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -303,13 +307,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = R7J487A36R;
+				DEVELOPMENT_TEAM = 84F9M66Q4D;
 				INFOPLIST_FILE = TextObservation/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = test.test.TextObservation;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cloverflavor.TextObservation;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
