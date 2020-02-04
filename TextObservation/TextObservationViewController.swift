@@ -8,7 +8,6 @@ class TextObservationViewController: UIViewController {
     private let readAreaY: CGFloat = 540
     private let readAreaWidth: CGFloat = 1080
     private let readAreaHeight: CGFloat = 135
-    private var imageSizeRatio: CGFloat = 3.375
     private let imageSizeWidth: CGFloat = 1080
     private let imageSizeHeight: CGFloat = 1920
     
@@ -30,10 +29,8 @@ class TextObservationViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        imageSizeRatio = view.bounds.width / imageSizeWidth
-        readAreaX = view.bounds.width / imageSizeRatio / 2 - readAreaWidth / 2
+        readAreaX = imageSizeWidth / 2 - readAreaWidth / 2
         setupCamera()
-        addShadowView()
     }
 
     override func viewDidDisappear(_ animated: Bool) {
@@ -56,36 +53,6 @@ class TextObservationViewController: UIViewController {
 
         avCaptureSession.addOutput(videoDataOutput)
         avCaptureSession.startRunning()
-    }
-    
-    /// 薄黒い背景のUIViewを作成
-    private func addShadowView() {
-        // 薄黒いビューを作成
-        let shadowView = UIView(frame: view.bounds)
-        // マスクを作成
-        let maskLayer = CAShapeLayer()
-        // 切り抜くパスを作成
-        let path = UIBezierPath(rect: view.bounds)
-                
-        // 開始座標
-        let width = readAreaWidth * imageSizeRatio
-        let height = readAreaHeight * imageSizeRatio
-        let startX = readAreaX * imageSizeRatio
-        let startY = readAreaY * imageSizeRatio
-
-        // 切り抜く
-        path.move(to: CGPoint(x: startX, y: startY))
-        path.addLine(to: CGPoint(x: startX + width, y: startY))
-        path.addLine(to: CGPoint(x: startX + width, y: startY + height))
-        path.addLine(to: CGPoint(x: startX, y: startY + height))
-        path.close()
-
-        maskLayer.path = path.cgPath
-        maskLayer.fillRule = CAShapeLayerFillRule.evenOdd
-        shadowView.layer.mask = maskLayer
-        shadowView.backgroundColor = UIColor.black.withAlphaComponent(0.8)
-
-        view.addSubview(shadowView)
     }
     
     /// テキストビューの定義
@@ -200,17 +167,23 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
         let ciImage: CIImage = CIImage(cvPixelBuffer: pixelBuffer)
         let uiImage = UIImage(ciImage: ciImage)
         
-        let croppedUiImage = uiImage.cropped(to: CGRect(x: readAreaX, y: readAreaY, width: readAreaWidth, height: readAreaHeight))!
-        guard let croppedCiImage = croppedUiImage.safeCiImage else { return }
-        guard let imageBuffer = croppedCiImage.toCVPixelBuffer() else { return }
+        guard let croppedImage = uiImage.cropped(to: CGRect(x: readAreaX, y: readAreaY, width: readAreaWidth, height: readAreaHeight)) else { return }
+        guard let croppedBuffer = croppedImage.safeCiImage?.toCVPixelBuffer() else { return }
         
-        getTextObservations(pixelBuffer: imageBuffer) { [weak self] textObservations in
+        let filter = CIFilter(name: "CIColorClamp")
+        filter?.setValue(ciImage, forKey: "inputImage")
+        filter?.setValue(CIVector(x: 1, y: 1, z: 1, w: 0.2), forKey: "inputMaxComponents")
+        filter?.setValue(CIVector(x: 0, y: 0, z: 0, w: 0), forKey: "inputMinComponents")
+        
+        guard let imageRef = CIContext(options: nil).createCGImage((filter?.outputImage)!, from: (filter?.outputImage!.extent)!) else { return }
+        let bgImage = UIImage(cgImage: imageRef)
+        
+        getTextObservations(pixelBuffer: croppedBuffer) { [weak self] textObservations in
             guard let self = self else { return }
-            guard let image = self.getTextRectsImage(imageBuffer: imageBuffer, textObservations: textObservations) else { return }
-            guard let allImage = uiImage.cropped(to: CGRect(x: 0, y: 0, width: self.imageSizeWidth, height: self.imageSizeHeight)) else { return }
-            let compUiImage = allImage.composite(image: image, x: self.readAreaX, y: self.readAreaY)
+            guard let fgImage = self.getTextRectsImage(imageBuffer: croppedBuffer, textObservations: textObservations) else { return }
+            let compImage = bgImage.composite(image: fgImage, x: self.readAreaX, y: self.readAreaY)
             DispatchQueue.main.async { [weak self] in
-                self?.previewImageView.image = compUiImage
+                self?.previewImageView.image = compImage
                 self?.showText(textObservations.first?.topCandidates(1).first?.string)
             }
         }
