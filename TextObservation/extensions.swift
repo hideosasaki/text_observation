@@ -58,3 +58,26 @@ extension UIImage {
         return image
     }
 }
+
+extension CIImage {
+    func toCVPixelBuffer() -> CVPixelBuffer? {
+        let size:CGSize = extent.size
+        var pixelBuffer:CVPixelBuffer?
+        let options = [
+            kCVPixelBufferCGImageCompatibilityKey as String: true,
+            kCVPixelBufferCGBitmapContextCompatibilityKey as String: true,
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
+        ] as [String : Any]
+        let status:CVReturn = CVPixelBufferCreate(kCFAllocatorDefault,
+                                                  Int(size.width),
+                                                  Int(size.height),
+                                                  kCVPixelFormatType_32BGRA,
+                                                  options as CFDictionary,
+                                                  &pixelBuffer)
+        let ciContext = CIContext()
+        if (status == kCVReturnSuccess && pixelBuffer != nil) {
+            ciContext.render(self, to: pixelBuffer!)
+        }
+        return pixelBuffer
+    }
+}

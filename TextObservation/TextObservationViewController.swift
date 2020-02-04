@@ -202,7 +202,7 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
         
         let croppedUiImage = uiImage.cropped(to: CGRect(x: readAreaX, y: readAreaY, width: readAreaWidth, height: readAreaHeight))!
         guard let croppedCiImage = croppedUiImage.safeCiImage else { return }
-        guard let imageBuffer = convertToCVPixelBuffer(from: croppedCiImage) else { return }
+        guard let imageBuffer = croppedCiImage.toCVPixelBuffer() else { return }
         
         getTextObservations(pixelBuffer: imageBuffer) { [weak self] textObservations in
             guard let self = self else { return }
@@ -214,27 +214,6 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
                 self?.showText(textObservations.first?.topCandidates(1).first?.string)
             }
         }
-    }
-    
-    private func convertToCVPixelBuffer(from ciImage: CIImage) -> CVPixelBuffer? {
-        let size:CGSize = ciImage.extent.size
-        var pixelBuffer:CVPixelBuffer?
-        let options = [
-            kCVPixelBufferCGImageCompatibilityKey as String: true,
-            kCVPixelBufferCGBitmapContextCompatibilityKey as String: true,
-            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
-        ] as [String : Any]
-        let status:CVReturn = CVPixelBufferCreate(kCFAllocatorDefault,
-                                                  Int(size.width),
-                                                  Int(size.height),
-                                                  kCVPixelFormatType_32BGRA,
-                                                  options as CFDictionary,
-                                                  &pixelBuffer)
-        let ciContext = CIContext()
-        if (status == kCVReturnSuccess && pixelBuffer != nil) {
-            ciContext.render(ciImage, to: pixelBuffer!)
-        }
-        return pixelBuffer
     }
 }
 
