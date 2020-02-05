@@ -39,7 +39,10 @@ extension CGImage {
         }
         guard let context = UIGraphicsGetCurrentContext() else { return nil }
         
-        let origin: CGRect = CGRect(x: rect.minX, y: rect.minY, width: CGFloat(self.width), height: CGFloat(self.height))
+        context.setFillColor(red: 0, green: 0, blue: 0, alpha: 0.98)
+        context.fill(CGRect(x: 0, y: 0, width: rect.width, height: rect.height))
+        
+        let origin: CGRect = CGRect(x: rect.minX, y: rect.minY, width: CGFloat(width), height: CGFloat(height))
 
         var affine = CGAffineTransform(scaleX: 1, y: -1)
         affine.ty = CGFloat(height) + origin.minY * 2.0

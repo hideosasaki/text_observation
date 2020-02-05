@@ -162,7 +162,7 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         connection.videoOrientation = .portrait
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        let backImage = CIImage(cvPixelBuffer: pixelBuffer)
         let x = TextObservationViewController.readAreaX
         let y = TextObservationViewController.readAreaY
         let w = TextObservationViewController.readAreaWidth
@@ -171,22 +171,17 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
         let ih = TextObservationViewController.imageSizeHeight
         
         let ciContext = CIContext()
-        let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent)
-        guard let croppedImage = cgImage?.cropping(to: CGRect(x: x, y: y, width: w, height: h)) else { return }
-        let paddingImage = croppedImage.padding(to: CGRect(x: x, y: y, width: iw, height: ih))
-        guard let fgBuffer = paddingImage?.toCVPixelBuffer() else { return }
+        guard
+            let cgImage = ciContext.createCGImage(backImage, from: backImage.extent),
+            let croppedImage = cgImage.cropping(to: CGRect(x: x, y: y, width: w, height: h)),
+            let paddedImage = croppedImage.padding(to: CGRect(x: x, y: y, width: iw, height: ih)),
+            let foreBuffer = paddedImage.toCVPixelBuffer() else { return }
         
-        // bgImageを半透明にして暗くする（previewImageView：背景黒なので）
-        let filter = CIFilter(name: "CIColorClamp")
-        filter?.setValue(ciImage, forKey: "inputImage")
-        filter?.setValue(CIVector(x: 1, y: 1, z: 1, w: 0.2), forKey: "inputMaxComponents")
-        filter?.setValue(CIVector(x: 0, y: 0, z: 0, w: 0), forKey: "inputMinComponents")
-        guard let bgImage = filter?.outputImage else { return }
-        
-        getTextObservations(pixelBuffer: fgBuffer) { [weak self] textObservations in
-            guard let self = self else { return }
-            guard let fgImage = self.getTextRectsImage(imageBuffer: fgBuffer, textObservations: textObservations) else { return }
-            let compositedImage = fgImage.composited(over: bgImage)
+        getTextObservations(pixelBuffer: foreBuffer) { [weak self] textObservations in
+            guard
+                let self = self,
+                let foreImage = self.getTextRectsImage(imageBuffer: foreBuffer, textObservations: textObservations) else { return }
+            let compositedImage = foreImage.composited(over: backImage)
             
             DispatchQueue.main.async { [weak self] in
                 self?.previewImageView.image = UIImage(ciImage: compositedImage)
