@@ -4,12 +4,12 @@ import Vision
 
 class TextObservationViewController: UIViewController {
     // 読み取り範囲の定義
-    private var readAreaX: CGFloat = 0
-    private let readAreaY: CGFloat = 540
-    private let readAreaWidth: CGFloat = 1080
-    private let readAreaHeight: CGFloat = 135
-    private let imageSizeWidth: CGFloat = 1080
-    private let imageSizeHeight: CGFloat = 1920
+    static let imageSizeWidth: CGFloat = 1080
+    static let imageSizeHeight: CGFloat = 1920
+    static let readAreaWidth: CGFloat = 1080
+    static let readAreaHeight: CGFloat = 135
+    static let readAreaX: CGFloat = imageSizeWidth / 2 - readAreaWidth / 2
+    static let readAreaY: CGFloat = 540
     
     @IBOutlet weak var previewImageView: UIImageView!
 
@@ -29,7 +29,6 @@ class TextObservationViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        readAreaX = imageSizeWidth / 2 - readAreaWidth / 2
         setupCamera()
     }
 
@@ -162,26 +161,28 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
     /// カメラからの映像取得デリゲート
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        
         connection.videoOrientation = .portrait
         let ciImage: CIImage = CIImage(cvPixelBuffer: pixelBuffer)
         let uiImage = UIImage(ciImage: ciImage)
-        
-        guard let croppedImage = uiImage.cropped(to: CGRect(x: readAreaX, y: readAreaY, width: readAreaWidth, height: readAreaHeight)) else { return }
+        let x = TextObservationViewController.readAreaX
+        let y = TextObservationViewController.readAreaY
+        let w = TextObservationViewController.readAreaWidth
+        let h = TextObservationViewController.readAreaHeight
+        guard let croppedImage = uiImage.cropped(to: CGRect(x: x, y: y, width: w, height: h)) else { return }
         guard let croppedBuffer = croppedImage.safeCiImage?.toCVPixelBuffer() else { return }
         
+        // bgImageを半透明にして暗くする（previewImageView：背景黒なので）
         let filter = CIFilter(name: "CIColorClamp")
         filter?.setValue(ciImage, forKey: "inputImage")
         filter?.setValue(CIVector(x: 1, y: 1, z: 1, w: 0.2), forKey: "inputMaxComponents")
         filter?.setValue(CIVector(x: 0, y: 0, z: 0, w: 0), forKey: "inputMinComponents")
-        
         guard let imageRef = CIContext(options: nil).createCGImage((filter?.outputImage)!, from: (filter?.outputImage!.extent)!) else { return }
         let bgImage = UIImage(cgImage: imageRef)
         
         getTextObservations(pixelBuffer: croppedBuffer) { [weak self] textObservations in
             guard let self = self else { return }
             guard let fgImage = self.getTextRectsImage(imageBuffer: croppedBuffer, textObservations: textObservations) else { return }
-            let compImage = bgImage.composite(image: fgImage, x: self.readAreaX, y: self.readAreaY)
+            let compImage = bgImage.composite(image: fgImage, x: x, y: y)
             DispatchQueue.main.async { [weak self] in
                 self?.previewImageView.image = compImage
                 self?.showText(textObservations.first?.topCandidates(1).first?.string)
