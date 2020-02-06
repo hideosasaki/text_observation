@@ -96,19 +96,16 @@ class TextObservationViewController: UIViewController {
             UIGraphicsEndImageContext()
         }
         guard let context = UIGraphicsGetCurrentContext() else { return nil }
-        
-        var affine = CGAffineTransform(scaleX: 1, y: -1)
-        affine.ty = CGFloat(cgImage.height)
-        context.concatenate(affine)
-        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
+        context.drawBitmap(cgImage, in: CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
 
-        for (index, el) in textObservations.enumerated() where index == 0 {
+        if 0 < textObservations.count {
+            let t = textObservations[0]
             // 正規化された矩形位置を指定領域に展開
             let rect = CGRect(
-                x: el.boundingBox.minX * imageSize.width,
-                y: el.boundingBox.minY * imageSize.height,
-                width: el.boundingBox.width * imageSize.width,
-                height: el.boundingBox.height * imageSize.height
+                x: t.boundingBox.minX * imageSize.width,
+                y: t.boundingBox.minY * imageSize.height,
+                width: t.boundingBox.width * imageSize.width,
+                height: t.boundingBox.height * imageSize.height
             )
             context.setStrokeColor(UIColor.red.cgColor)
             context.setLineWidth(4.0)
@@ -139,10 +136,7 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
             else { return }
         
         getTextObservations(cgImage: dugImage) { [weak self] textObservations in
-            guard
-                let self = self,
-                let foreImage = self.createTextRects(cgImage: dugImage, textObservations: textObservations)
-                else { return }
+            guard let foreImage = self?.createTextRects(cgImage: dugImage, textObservations: textObservations) else { return }
             
             let compositedImage = foreImage.composited(over: backImage)
             
