@@ -5,7 +5,6 @@ import Vision
 class TextObservationViewController: UIViewController {
     // 読み取り範囲の定義
     static let imageSizeWidth: CGFloat = 1080
-    static let imageSizeHeight: CGFloat = 1920
     static let readAreaWidth: CGFloat = 1080
     static let readAreaHeight: CGFloat = 120
     static let readAreaX: CGFloat = imageSizeWidth / 2 - readAreaWidth / 2
@@ -167,15 +166,12 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
         let y = TextObservationViewController.readAreaY
         let w = TextObservationViewController.readAreaWidth
         let h = TextObservationViewController.readAreaHeight
-        let iw = TextObservationViewController.imageSizeWidth
-        let ih = TextObservationViewController.imageSizeHeight
         
         let ciContext = CIContext()
         guard
             let cgImage = ciContext.createCGImage(backImage, from: backImage.extent),
-            let croppedImage = cgImage.cropping(to: CGRect(x: x, y: y, width: w, height: h)),
-            let paddedImage = croppedImage.padding(to: CGRect(x: x, y: y, width: iw, height: ih)),
-            let foreBuffer = paddedImage.toCVPixelBuffer() else { return }
+            let dugImage = cgImage.digging(to: CGRect(x: x, y: y, width: w, height: h), red: 0, green: 0, blue: 0, alpha: 0.98),
+            let foreBuffer = dugImage.toCVPixelBuffer() else { return }
         
         getTextObservations(pixelBuffer: foreBuffer) { [weak self] textObservations in
             guard

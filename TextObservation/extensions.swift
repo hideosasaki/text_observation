@@ -32,15 +32,17 @@ extension CGImage {
         return pixelBuffer
     }
     
-    func padding(to rect: CGRect) -> CGImage? {
+    func padding(to rect: CGRect, red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0) -> CGImage? {
         UIGraphicsBeginImageContextWithOptions(CGSize(width: rect.width, height: rect.height), false, 1)
         defer {
             UIGraphicsEndImageContext()
         }
         guard let context = UIGraphicsGetCurrentContext() else { return nil }
         
-        context.setFillColor(red: 0, green: 0, blue: 0, alpha: 0.98)
-        context.fill(CGRect(x: 0, y: 0, width: rect.width, height: rect.height))
+        if 0 < alpha {
+            context.setFillColor(red: red, green: green, blue: blue, alpha: alpha)
+            context.fill(CGRect(x: 0, y: 0, width: rect.width, height: rect.height))
+        }
         
         let origin: CGRect = CGRect(x: rect.minX, y: rect.minY, width: CGFloat(width), height: CGFloat(height))
 
@@ -50,5 +52,13 @@ extension CGImage {
         context.draw(self, in: origin)
 
         return context.makeImage()
+    }
+    
+    func digging(to rect: CGRect, red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0) -> CGImage? {
+        guard
+            let croppedImage = cropping(to: rect),
+            let paddedImage = croppedImage.padding(to: CGRect(x: rect.minX, y: rect.minY, width: CGFloat(width), height: CGFloat(height)), red: red, green: green, blue: blue, alpha: alpha)
+            else { return nil }
+        return paddedImage
     }
 }
