@@ -11,29 +11,8 @@ import CoreImage
 import UIKit
 
 extension CGImage {
-    func toCVPixelBuffer() -> CVPixelBuffer? {
-        var pixelBuffer:CVPixelBuffer?
-        let options = [
-            kCVPixelBufferCGImageCompatibilityKey as String: true,
-            kCVPixelBufferCGBitmapContextCompatibilityKey as String: true,
-            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
-        ] as [String : Any]
-        let status:CVReturn = CVPixelBufferCreate(kCFAllocatorDefault,
-                                                  Int(width),
-                                                  Int(height),
-                                                  kCVPixelFormatType_32BGRA,
-                                                  options as CFDictionary,
-                                                  &pixelBuffer)
-        
-        let ciContext = CIContext()
-        if (status == kCVReturnSuccess && pixelBuffer != nil) {
-            ciContext.render(CIImage(cgImage: self), to: pixelBuffer!)
-        }
-        return pixelBuffer
-    }
-    
     func padding(to rect: CGRect, red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0) -> CGImage? {
-        UIGraphicsBeginImageContextWithOptions(CGSize(width: rect.width, height: rect.height), false, 1)
+        UIGraphicsBeginImageContext(CGSize(width: rect.width, height: rect.height))
         defer {
             UIGraphicsEndImageContext()
         }
@@ -56,9 +35,9 @@ extension CGImage {
     
     func digging(to rect: CGRect, red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0) -> CGImage? {
         guard
-            let croppedImage = cropping(to: rect),
-            let paddedImage = croppedImage.padding(to: CGRect(x: rect.minX, y: rect.minY, width: CGFloat(width), height: CGFloat(height)), red: red, green: green, blue: blue, alpha: alpha)
+            let cropped = cropping(to: rect),
+            let padded = cropped.padding(to: CGRect(x: rect.minX, y: rect.minY, width: CGFloat(width), height: CGFloat(height)), red: red, green: green, blue: blue, alpha: alpha)
             else { return nil }
-        return paddedImage
+        return padded
     }
 }

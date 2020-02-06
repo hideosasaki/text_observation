@@ -69,17 +69,8 @@ class TextObservationViewController: UIViewController {
         view.addSubview(textLabel)
     }
 
-    /// コンテキストに矩形を描画
-    private func drawRect(_ rect: CGRect, context: CGContext, index: Int) {
-        if index == 0 {
-            context.setStrokeColor(UIColor.red.cgColor)
-            context.setLineWidth(4.0)
-            context.stroke(rect)
-        }
-    }
-    
     /// 文字認識情報の配列取得 (非同期)
-    private func getTextObservations(pixelBuffer: CVPixelBuffer, completion: @escaping (([VNRecognizedTextObservation])->())) {
+    private func getTextObservations(cgImage: CGImage, completion: @escaping (([VNRecognizedTextObservation])->())) {
         let request = VNRecognizeTextRequest { (request, error) in
             guard let results = request.results as? [VNRecognizedTextObservation] else {
                 completion([])
@@ -92,68 +83,42 @@ class TextObservationViewController: UIViewController {
         request.recognitionLanguages = supportedRecognitionLanguages
         request.usesLanguageCorrection = false
 
-        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
+        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
         try? handler.perform([request])
     }
 
-    /// 正規化された矩形位置を指定領域に展開
-    private func getUnfoldRect(normalizedRect: CGRect, targetSize: CGSize) -> CGRect {
-        return CGRect(
-            x: normalizedRect.minX * targetSize.width,
-            y: normalizedRect.minY * targetSize.height,
-            width: normalizedRect.width * targetSize.width,
-            height: normalizedRect.height * targetSize.height
-        )
-    }
-
     /// 文字検出位置に矩形を描画した image を取得
-    private func getTextRectsImage(imageBuffer: CVImageBuffer, textObservations: [VNRecognizedTextObservation]) -> CIImage? {
-
-        CVPixelBufferLockBaseAddress(imageBuffer, CVPixelBufferLockFlags(rawValue: 0))
-
-        guard let pixelBufferBaseAddres = CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 0) else {
-            CVPixelBufferUnlockBaseAddress(imageBuffer, CVPixelBufferLockFlags(rawValue: 0))
-            return nil
+    private func createTextRects(cgImage: CGImage, textObservations: [VNRecognizedTextObservation]) -> CIImage? {
+        let imageSize = CGSize(width: cgImage.width, height: cgImage.height)
+        
+        UIGraphicsBeginImageContext(imageSize)
+        defer {
+            UIGraphicsEndImageContext()
         }
+        guard let context = UIGraphicsGetCurrentContext() else { return nil }
+        
+        var affine = CGAffineTransform(scaleX: 1, y: -1)
+        affine.ty = CGFloat(cgImage.height)
+        context.concatenate(affine)
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
 
-        let width = CVPixelBufferGetWidth(imageBuffer)
-        let height = CVPixelBufferGetHeight(imageBuffer)
-        let bitmapInfo = CGBitmapInfo(rawValue:
-            (CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue)
-        )
-
-        guard let newContext = CGContext(
-            data: pixelBufferBaseAddres,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: CVPixelBufferGetBytesPerRow(imageBuffer),
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: bitmapInfo.rawValue
-            ) else
-        {
-            CVPixelBufferUnlockBaseAddress(imageBuffer, CVPixelBufferLockFlags(rawValue: 0))
-            return nil
+        for (index, el) in textObservations.enumerated() where index == 0 {
+            // 正規化された矩形位置を指定領域に展開
+            let rect = CGRect(
+                x: el.boundingBox.minX * imageSize.width,
+                y: el.boundingBox.minY * imageSize.height,
+                width: el.boundingBox.width * imageSize.width,
+                height: el.boundingBox.height * imageSize.height
+            )
+            context.setStrokeColor(UIColor.red.cgColor)
+            context.setLineWidth(4.0)
+            context.stroke(rect)
         }
-
-        let imageSize = CGSize(width: width, height: height)
-
-        for (index, el) in textObservations.enumerated() {
-            let rect = getUnfoldRect(normalizedRect: el.boundingBox, targetSize: imageSize)
-            drawRect(rect, context: newContext, index: index)
-        }
-
-        CVPixelBufferUnlockBaseAddress(imageBuffer, CVPixelBufferLockFlags(rawValue: 0))
-
-        guard let imageRef = newContext.makeImage() else {
-            return nil
-        }
-        let image = CIImage(cgImage: imageRef)
-
-        return image
+        
+        guard let imageRef = context.makeImage() else { return nil }
+        return CIImage(cgImage: imageRef)
     }
 }
-
 
 extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDelegate{
 
@@ -170,13 +135,15 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
         let ciContext = CIContext()
         guard
             let cgImage = ciContext.createCGImage(backImage, from: backImage.extent),
-            let dugImage = cgImage.digging(to: CGRect(x: x, y: y, width: w, height: h), red: 0, green: 0, blue: 0, alpha: 0.92),
-            let foreBuffer = dugImage.toCVPixelBuffer() else { return }
+            let dugImage = cgImage.digging(to: CGRect(x: x, y: y, width: w, height: h), red: 0, green: 0, blue: 0, alpha: 0.92)
+            else { return }
         
-        getTextObservations(pixelBuffer: foreBuffer) { [weak self] textObservations in
+        getTextObservations(cgImage: dugImage) { [weak self] textObservations in
             guard
                 let self = self,
-                let foreImage = self.getTextRectsImage(imageBuffer: foreBuffer, textObservations: textObservations) else { return }
+                let foreImage = self.createTextRects(cgImage: dugImage, textObservations: textObservations)
+                else { return }
+            
             let compositedImage = foreImage.composited(over: backImage)
             
             DispatchQueue.main.async { [weak self] in
