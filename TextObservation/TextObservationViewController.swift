@@ -16,16 +16,6 @@ class TextObservationViewController: UIViewController {
     
     private let avCaptureSession = AVCaptureSession()
     
-    /// 認識精度を設定。 リアルタイム処理なので fastで
-    private let recognitionLevel : VNRequestTextRecognitionLevel = .fast
-    
-    /// サポートしている言語リストを取得 （現在は英語のみ）
-    private lazy var supportedRecognitionLanguages : [String] = {
-        return (try? VNRecognizeTextRequest.supportedRecognitionLanguages(
-        for: recognitionLevel,
-        revision: VNRecognizeTextRequestRevision1)) ?? []
-    }()
-    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupCamera()
@@ -70,7 +60,7 @@ class TextObservationViewController: UIViewController {
     }
 
     /// 文字認識情報の配列取得 (非同期)
-    private func getTextObservations(cgImage: CGImage, completion: @escaping (([VNRecognizedTextObservation])->())) {
+    private func read(_ cgImage: CGImage, completion: @escaping (([VNRecognizedTextObservation])->())) {
         let request = VNRecognizeTextRequest { (request, error) in
             guard let results = request.results as? [VNRecognizedTextObservation] else {
                 completion([])
@@ -79,8 +69,8 @@ class TextObservationViewController: UIViewController {
             completion(results)
         }
 
-        request.recognitionLevel = recognitionLevel
-        request.recognitionLanguages = supportedRecognitionLanguages
+        request.recognitionLevel = .fast
+        request.recognitionLanguages = ["en_US"]
         request.usesLanguageCorrection = false
 
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
@@ -88,7 +78,7 @@ class TextObservationViewController: UIViewController {
     }
 
     /// 文字検出位置に矩形を描画した image を取得
-    private func createTextRects(cgImage: CGImage, textObservations: [VNRecognizedTextObservation]) -> CIImage? {
+    private func addMarker(to cgImage: CGImage, textObservations: [VNRecognizedTextObservation]) -> CGImage? {
         let imageSize = CGSize(width: cgImage.width, height: cgImage.height)
         
         UIGraphicsBeginImageContext(imageSize)
@@ -96,8 +86,7 @@ class TextObservationViewController: UIViewController {
             UIGraphicsEndImageContext()
         }
         guard let context = UIGraphicsGetCurrentContext() else { return nil }
-        context.drawBitmap(cgImage, in: CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
-
+        context.drawBitmap(cgImage, in: CGRect(origin: .zero, size: imageSize))
         if 0 < textObservations.count {
             let t = textObservations[0]
             // 正規化された矩形位置を指定領域に展開
@@ -112,32 +101,36 @@ class TextObservationViewController: UIViewController {
             context.stroke(rect)
         }
         
-        guard let imageRef = context.makeImage() else { return nil }
-        return CIImage(cgImage: imageRef)
+        return context.makeImage()
     }
 }
 
-extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDelegate{
+extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDelegate {
 
     /// カメラからの映像取得デリゲート
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         connection.videoOrientation = .portrait
-        let backImage = CIImage(cvPixelBuffer: pixelBuffer)
-        let x = TextObservationViewController.readAreaX
-        let y = TextObservationViewController.readAreaY
-        let w = TextObservationViewController.readAreaWidth
-        let h = TextObservationViewController.readAreaHeight
         
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        let backImage = CIImage(cvPixelBuffer: pixelBuffer)
+        let readArea = CGRect(
+            x: TextObservationViewController.readAreaX,
+            y: TextObservationViewController.readAreaY,
+            width: TextObservationViewController.readAreaWidth,
+            height: TextObservationViewController.readAreaHeight
+        )
         let ciContext = CIContext()
         guard
-            let cgImage = ciContext.createCGImage(backImage, from: backImage.extent),
-            let dugImage = cgImage.digging(to: CGRect(x: x, y: y, width: w, height: h), red: 0, green: 0, blue: 0, alpha: 0.92)
+            let cgBackImage = ciContext.createCGImage(backImage, from: backImage.extent),
+            let readAreaImage = cgBackImage.cropping(to: readArea)
             else { return }
         
-        getTextObservations(cgImage: dugImage) { [weak self] textObservations in
-            guard let foreImage = self?.createTextRects(cgImage: dugImage, textObservations: textObservations) else { return }
-            
+        read(readAreaImage) { [weak self] textObservations in
+            guard
+                let markerImage = self?.addMarker(to: readAreaImage, textObservations: textObservations),
+                let paddedImage = markerImage.padding(origin: readArea.origin, size: backImage.extent.size, alpha: 0.92)
+                else { return }
+            let foreImage = CIImage(cgImage: paddedImage)
             let compositedImage = foreImage.composited(over: backImage)
             
             DispatchQueue.main.async { [weak self] in

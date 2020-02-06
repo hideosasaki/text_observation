@@ -11,8 +11,8 @@ import CoreImage
 import UIKit
 
 extension CGImage {
-    func padding(to rect: CGRect, red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0) -> CGImage? {
-        UIGraphicsBeginImageContext(CGSize(width: rect.width, height: rect.height))
+    func padding(origin: CGPoint, size: CGSize, red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0) -> CGImage? {
+        UIGraphicsBeginImageContext(size)
         defer {
             UIGraphicsEndImageContext()
         }
@@ -20,22 +20,13 @@ extension CGImage {
         
         if 0 < alpha {
             context.setFillColor(red: red, green: green, blue: blue, alpha: alpha)
-            context.fill(CGRect(x: 0, y: 0, width: rect.width, height: rect.height))
+            context.fill(CGRect(origin: .zero, size: size))
         }
         
-        let origin: CGRect = CGRect(x: rect.minX, y: rect.minY, width: CGFloat(width), height: CGFloat(height))
-        context.drawBitmap(self, in: origin)
+        let place = CGRect(x: origin.x, y: origin.y, width: CGFloat(width), height: CGFloat(height))
+        context.drawBitmap(self, in: place)
         return context.makeImage()
     }
-    
-    func digging(to rect: CGRect, red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0) -> CGImage? {
-        guard
-            let cropped = cropping(to: rect),
-            let padded = cropped.padding(to: CGRect(x: rect.minX, y: rect.minY, width: CGFloat(width), height: CGFloat(height)), red: red, green: green, blue: blue, alpha: alpha)
-            else { return nil }
-        return padded
-    }
-
 }
 
 extension CGContext {
