@@ -170,7 +170,7 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
         let ciContext = CIContext()
         guard
             let cgImage = ciContext.createCGImage(backImage, from: backImage.extent),
-            let dugImage = cgImage.digging(to: CGRect(x: x, y: y, width: w, height: h), red: 0, green: 0, blue: 0, alpha: 0.98),
+            let dugImage = cgImage.digging(to: CGRect(x: x, y: y, width: w, height: h), red: 0, green: 0, blue: 0, alpha: 0.92),
             let foreBuffer = dugImage.toCVPixelBuffer() else { return }
         
         getTextObservations(pixelBuffer: foreBuffer) { [weak self] textObservations in
