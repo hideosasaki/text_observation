@@ -17,10 +17,25 @@ class TextObservationViewController: UIViewController {
     )
     
     @IBOutlet weak var previewImageView: UIImageView!
-
-    private let textLabel = UILabel()
+    
+    @IBOutlet weak var accurateTextLabel: UILabel!
+    
+    @IBAction func captureButtonTouchDown(_ sender: UIButton) {
+        guard let image = fastTextImage else { return }
+        read(image, recognitionLevel: .accurate) { textObservations in
+            self.accurateTextLabel.text = textObservations.first?.topCandidates(1).first?.string
+        }
+    }
+    
+    @IBOutlet weak var readAreaImageView: UIImageView!
+    
+    private let fastTextLabel = UILabel()
     
     private let avCaptureSession = AVCaptureSession()
+    
+    private var fastTextImage: CGImage?
+    
+    private var fastText: String?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -50,23 +65,24 @@ class TextObservationViewController: UIViewController {
     }
     
     /// テキストビューの定義
-    private func showText(_ mes: String?) {
+    private func showFastText() {
         // テキストメッセージを配置
-        textLabel.numberOfLines = 4
-        textLabel.font = UIFont.systemFont(ofSize: 17, weight: .bold)
-        textLabel.frame = CGRect(x: 0, y: 395, width: 320, height: 100)
-        textLabel.textColor = UIColor.white
-        textLabel.text = mes
+        fastTextLabel.numberOfLines = 4
+        fastTextLabel.font = UIFont.systemFont(ofSize: 17, weight: .bold)
+        fastTextLabel.frame = CGRect(x: 0, y: 395, width: 320, height: 100)
+        fastTextLabel.textColor = UIColor.white
+        fastTextLabel.lineBreakMode = .byCharWrapping
+        fastTextLabel.text = fastText
         // 上辺揃えになるよう調整
-        var rect = textLabel.frame
-        textLabel.sizeToFit()
-        rect.size.height = textLabel.frame.height
-        textLabel.frame = rect
-        view.addSubview(textLabel)
+        var rect = fastTextLabel.frame
+        fastTextLabel.sizeToFit()
+        rect.size.height = fastTextLabel.frame.height
+        fastTextLabel.frame = rect
+        view.addSubview(fastTextLabel)
     }
 
     /// 文字認識情報の配列取得 (非同期)
-    private func read(_ cgImage: CGImage, completion: @escaping (([VNRecognizedTextObservation])->())) {
+    private func read(_ cgImage: CGImage, recognitionLevel: VNRequestTextRecognitionLevel = .fast, completion: @escaping ([VNRecognizedTextObservation])->()) {
         let request = VNRecognizeTextRequest { (request, error) in
             guard let results = request.results as? [VNRecognizedTextObservation] else {
                 completion([])
@@ -75,7 +91,7 @@ class TextObservationViewController: UIViewController {
             completion(results)
         }
 
-        request.recognitionLevel = .fast
+        request.recognitionLevel = recognitionLevel
         request.recognitionLanguages = ["en_US"]
         request.usesLanguageCorrection = false
 
@@ -93,8 +109,8 @@ class TextObservationViewController: UIViewController {
         }
         guard let context = UIGraphicsGetCurrentContext() else { return nil }
         context.draw(cgImage, in: CGRect(origin: .zero, size: imageSize))
-        if 0 < textObservations.count {
-            let t = textObservations[0]
+        
+        let drawMarker = {(_ t: VNRecognizedTextObservation) in
             // 正規化された矩形位置を指定領域に展開
             let rect = CGRect(
                 x: t.boundingBox.minX * imageSize.width,
@@ -105,14 +121,36 @@ class TextObservationViewController: UIViewController {
             context.setStrokeColor(UIColor.red.cgColor)
             context.setLineWidth(4.0)
             context.stroke(rect)
+            
+            let rectReversed = CGRect(
+                x: rect.minX,
+                y: imageSize.height - rect.minY - rect.height,
+                width: rect.width,
+                height: rect.height
+            )
+            
+            if let cropped = cgImage.cropping(to: rectReversed) {
+                self.fastTextImage = cropped
+                DispatchQueue.main.async {
+                    self.readAreaImageView.image = UIImage(cgImage: cropped)
+                }
+            }
         }
         
+        let t = textObservations.filter { fastText == $0.topCandidates(1).first?.string }.first
+        if let t = t {
+            drawMarker(t)
+        } else if let t = textObservations.first {
+            fastText = t.topCandidates(1).first?.string
+            drawMarker(t)
+        } else {
+            fastText = ""
+        }
         return context.makeImage()
     }
 }
 
 extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDelegate {
-
     /// カメラからの映像取得デリゲート
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         connection.videoOrientation = .portrait
@@ -136,7 +174,7 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
             
             DispatchQueue.main.async { [weak self] in
                 self?.previewImageView.image = UIImage(ciImage: compositedImage)
-                self?.showText(textObservations.first?.topCandidates(1).first?.string)
+                self?.showFastText()
             }
         }
     }
