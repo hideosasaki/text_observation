@@ -9,6 +9,12 @@ class TextObservationViewController: UIViewController {
     static let readAreaHeight: CGFloat = 120
     static let readAreaX: CGFloat = imageSizeWidth / 2 - readAreaWidth / 2
     static let readAreaY: CGFloat = 540
+    static let readArea = CGRect(
+        x: TextObservationViewController.readAreaX,
+        y: TextObservationViewController.readAreaY,
+        width: TextObservationViewController.readAreaWidth,
+        height: TextObservationViewController.readAreaHeight
+    )
     
     @IBOutlet weak var previewImageView: UIImageView!
 
@@ -86,7 +92,7 @@ class TextObservationViewController: UIViewController {
             UIGraphicsEndImageContext()
         }
         guard let context = UIGraphicsGetCurrentContext() else { return nil }
-        context.drawBitmap(cgImage, in: CGRect(origin: .zero, size: imageSize))
+        context.draw(cgImage, in: CGRect(origin: .zero, size: imageSize))
         if 0 < textObservations.count {
             let t = textObservations[0]
             // 正規化された矩形位置を指定領域に展開
@@ -113,12 +119,7 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
         
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let backImage = CIImage(cvPixelBuffer: pixelBuffer)
-        let readArea = CGRect(
-            x: TextObservationViewController.readAreaX,
-            y: TextObservationViewController.readAreaY,
-            width: TextObservationViewController.readAreaWidth,
-            height: TextObservationViewController.readAreaHeight
-        )
+        let readArea = type(of: self).readArea
         let ciContext = CIContext()
         guard
             let cgBackImage = ciContext.createCGImage(backImage, from: backImage.extent),

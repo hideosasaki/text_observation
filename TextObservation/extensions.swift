@@ -24,16 +24,7 @@ extension CGImage {
         }
         
         let place = CGRect(x: origin.x, y: origin.y, width: CGFloat(width), height: CGFloat(height))
-        context.drawBitmap(self, in: place)
+        context.draw(self, in: place)
         return context.makeImage()
-    }
-}
-
-extension CGContext {
-    func drawBitmap(_ image: CGImage, in rect: CGRect, byTiling: Bool = false) {
-        var affine = CGAffineTransform(scaleX: 1, y: -1)
-        affine.ty = CGFloat(image.height) + rect.minY * 2.0
-        concatenate(affine)
-        draw(image, in: rect, byTiling: byTiling)
     }
 }
