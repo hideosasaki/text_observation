@@ -20,22 +20,22 @@ class TextObservationViewController: UIViewController {
     
     @IBOutlet weak var accurateTextLabel: UILabel!
     
-    @IBAction func captureButtonTouchDown(_ sender: UIButton) {
-        guard let image = fastTextImage else { return }
-        read(image, recognitionLevel: .accurate) { textObservations in
-            self.accurateTextLabel.text = textObservations.first?.topCandidates(1).first?.string
-        }
-    }
-    
-    @IBOutlet weak var readAreaImageView: UIImageView!
+    @IBOutlet weak var detectedImageView: UIImageView!
     
     private let fastTextLabel = UILabel()
     
     private let avCaptureSession = AVCaptureSession()
     
-    private var fastTextImage: CGImage?
+    private var detectedImage: CGImage?
     
     private var fastText: String?
+    
+    @IBAction func captureButtonTouchDown(_ sender: UIButton) {
+        guard let image = detectedImage else { return }
+        read(image, recognitionLevel: .accurate) { textObservations in
+            self.accurateTextLabel.text = textObservations.first?.topCandidates(1).first?.string
+        }
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -100,15 +100,15 @@ class TextObservationViewController: UIViewController {
     }
 
     /// 文字検出位置に矩形を描画した image を取得
-    private func addMarker(to cgImage: CGImage, textObservations: [VNRecognizedTextObservation]) -> CGImage? {
-        let imageSize = CGSize(width: cgImage.width, height: cgImage.height)
+    private func detect(_ image: CGImage, textObservations: [VNRecognizedTextObservation]) -> CGImage? {
+        let imageSize = CGSize(width: image.width, height: image.height)
         
         UIGraphicsBeginImageContext(imageSize)
         defer {
             UIGraphicsEndImageContext()
         }
         guard let context = UIGraphicsGetCurrentContext() else { return nil }
-        context.draw(cgImage, in: CGRect(origin: .zero, size: imageSize))
+        context.draw(image, in: CGRect(origin: .zero, size: imageSize))
         
         let drawMarker = {(_ t: VNRecognizedTextObservation) in
             // 正規化された矩形位置を指定領域に展開
@@ -129,10 +129,10 @@ class TextObservationViewController: UIViewController {
                 height: rect.height
             )
             
-            if let cropped = cgImage.cropping(to: rectReversed) {
-                self.fastTextImage = cropped
+            if let cropped = image.cropping(to: rectReversed) {
+                self.detectedImage = cropped
                 DispatchQueue.main.async {
-                    self.readAreaImageView.image = UIImage(cgImage: cropped)
+                    self.detectedImageView.image = UIImage(cgImage: cropped)
                 }
             }
         }
@@ -166,7 +166,7 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
         
         read(readAreaImage) { [weak self] textObservations in
             guard
-                let markerImage = self?.addMarker(to: readAreaImage, textObservations: textObservations),
+                let markerImage = self?.detect(readAreaImage, textObservations: textObservations),
                 let paddedImage = markerImage.padding(origin: readArea.origin, size: backImage.extent.size, alpha: 0.92)
                 else { return }
             let foreImage = CIImage(cgImage: paddedImage)
@@ -179,5 +179,3 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
         }
     }
 }
-
-
