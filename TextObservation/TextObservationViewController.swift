@@ -32,8 +32,8 @@ class TextObservationViewController: UIViewController {
     
     @IBAction func captureButtonTouchDown(_ sender: UIButton) {
         guard let image = detectedImage else { return }
-        read(image, recognitionLevel: .accurate) { textObservations in
-            self.accurateTextLabel.text = textObservations.first?.topCandidates(1).first?.string
+        read(image, recognitionLevel: .accurate) { [weak self] textObservations in
+            self?.accurateTextLabel.text = textObservations.first?.topCandidates(1).first?.string
         }
     }
     
@@ -51,17 +51,23 @@ class TextObservationViewController: UIViewController {
     private func setupCamera() {
         avCaptureSession.sessionPreset = .hd1920x1080
 
-        let device = AVCaptureDevice.default(for: .video)
-        let input = try! AVCaptureDeviceInput(device: device!)
-        avCaptureSession.addInput(input)
+        guard let device = AVCaptureDevice.default(for: .video) else {
+            // unable to use the default camera
+            return
+        }
+        if let input = try? AVCaptureDeviceInput(device: device) {
+            avCaptureSession.addInput(input)
 
-        let videoDataOutput = AVCaptureVideoDataOutput()
-        videoDataOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String : Int(kCVPixelFormatType_32BGRA)]
-        videoDataOutput.alwaysDiscardsLateVideoFrames = true
-        videoDataOutput.setSampleBufferDelegate(self, queue: .global())
+            let videoDataOutput = AVCaptureVideoDataOutput()
+            videoDataOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String : Int(kCVPixelFormatType_32BGRA)]
+            videoDataOutput.alwaysDiscardsLateVideoFrames = true
+            videoDataOutput.setSampleBufferDelegate(self, queue: .global())
 
-        avCaptureSession.addOutput(videoDataOutput)
-        avCaptureSession.startRunning()
+            avCaptureSession.addOutput(videoDataOutput)
+            avCaptureSession.startRunning()
+        } else {
+            // DeviceInput is unavailable
+        }
     }
     
     /// テキストビューの定義
