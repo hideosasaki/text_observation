@@ -10,10 +10,10 @@ class TextObservationViewController: UIViewController {
     static let readAreaX: CGFloat = imageSizeWidth / 2 - readAreaWidth / 2
     static let readAreaY: CGFloat = 540
     static let readArea = CGRect(
-        x: TextObservationViewController.readAreaX,
-        y: TextObservationViewController.readAreaY,
-        width: TextObservationViewController.readAreaWidth,
-        height: TextObservationViewController.readAreaHeight
+        x: readAreaX,
+        y: readAreaY,
+        width: readAreaWidth,
+        height: readAreaHeight
     )
     
     @IBOutlet weak var previewImageView: UIImageView!
@@ -88,7 +88,7 @@ class TextObservationViewController: UIViewController {
     }
 
     /// 文字認識情報の配列取得 (非同期)
-    private func read(_ cgImage: CGImage, recognitionLevel: VNRequestTextRecognitionLevel = .fast, completion: @escaping ([VNRecognizedTextObservation])->()) {
+    private func read(_ image: CGImage, recognitionLevel: VNRequestTextRecognitionLevel = .fast, completion: @escaping ([VNRecognizedTextObservation]) -> ()) {
         let request = VNRecognizeTextRequest { (request, error) in
             guard let results = request.results as? [VNRecognizedTextObservation] else {
                 completion([])
@@ -101,7 +101,7 @@ class TextObservationViewController: UIViewController {
         request.recognitionLanguages = ["en_US"]
         request.usesLanguageCorrection = false
 
-        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+        let handler = VNImageRequestHandler(cgImage: image, options: [:])
         try? handler.perform([request])
     }
 
