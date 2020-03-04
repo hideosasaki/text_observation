@@ -30,10 +30,19 @@ class TextObservationViewController: UIViewController {
     
     private var fastText: String?
     
+    private var isCaptureing: Bool = false
+    
     @IBAction func captureButtonTouchDown(_ sender: UIButton) {
         guard let image = detectedImage else { return }
-        read(image, recognitionLevel: .accurate) { [weak self] textObservations in
-            self?.accurateTextLabel.text = textObservations.first?.topCandidates(1).first?.string
+        isCaptureing = true
+        accurateTextLabel.text = "...Captureing..."
+        DispatchQueue.global(qos: .default).async {
+            self.read(image, recognitionLevel: .accurate) { [weak self] textObservations in
+                DispatchQueue.main.async {
+                    self?.accurateTextLabel.text = textObservations.first?.topCandidates(1).first?.string
+                }
+                self?.isCaptureing = false
+            }
         }
     }
     
@@ -159,6 +168,7 @@ class TextObservationViewController: UIViewController {
 extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDelegate {
     /// カメラからの映像取得デリゲート
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        if isCaptureing { return }
         connection.videoOrientation = .portrait
         
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
@@ -178,7 +188,7 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
             let foreImage = CIImage(cgImage: paddedImage)
             let compositedImage = foreImage.composited(over: backImage)
             
-            DispatchQueue.main.async { [weak self] in
+            DispatchQueue.main.async {
                 self?.previewImageView.image = UIImage(ciImage: compositedImage)
                 self?.showFastText()
             }
