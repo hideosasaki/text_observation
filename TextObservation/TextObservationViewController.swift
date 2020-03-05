@@ -36,9 +36,13 @@ class TextObservationViewController: UIViewController {
         guard let image = detectedImage else { return }
         isCaptureing = true
         accurateTextLabel.text = "...Captureing..."
-        self.read(image, recognitionLevel: .accurate) { [weak self] textObservations in
-            self?.accurateTextLabel.text = textObservations.first?.topCandidates(1).first?.string
-            self?.isCaptureing = false
+        DispatchQueue.global(qos: .userInitiated).async {
+            self.read(image, recognitionLevel: .accurate) { [weak self] textObservations in
+                DispatchQueue.main.sync {
+                    self?.accurateTextLabel.text = textObservations.first?.topCandidates(1).first?.string
+                }
+                self?.isCaptureing = false
+            }
         }
     }
     
@@ -66,7 +70,7 @@ class TextObservationViewController: UIViewController {
             let videoDataOutput = AVCaptureVideoDataOutput()
             videoDataOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String : Int(kCVPixelFormatType_32BGRA)]
             videoDataOutput.alwaysDiscardsLateVideoFrames = true
-            videoDataOutput.setSampleBufferDelegate(self, queue: .global())
+            videoDataOutput.setSampleBufferDelegate(self, queue: .global(qos: .userInteractive))
 
             avCaptureSession.addOutput(videoDataOutput)
             avCaptureSession.startRunning()
@@ -95,13 +99,11 @@ class TextObservationViewController: UIViewController {
     /// 文字認識情報の配列取得 (非同期)
     private func read(_ image: CGImage, recognitionLevel: VNRequestTextRecognitionLevel = .fast, completion: @escaping ([VNRecognizedTextObservation]) -> ()) {
         let request = VNRecognizeTextRequest { (request, error) in
-            DispatchQueue.main.async {
-                guard let results = request.results as? [VNRecognizedTextObservation] else {
-                    completion([])
-                    return
-                }
-                completion(results)
+            guard let results = request.results as? [VNRecognizedTextObservation] else {
+                completion([])
+                return
             }
+            completion(results)
         }
 
         request.recognitionLevel = recognitionLevel
@@ -109,9 +111,7 @@ class TextObservationViewController: UIViewController {
         request.usesLanguageCorrection = false
 
         let handler = VNImageRequestHandler(cgImage: image, options: [:])
-        DispatchQueue.global(qos: .default).async {
-            try? handler.perform([request])
-        }
+        try? handler.perform([request])
     }
 
     /// 文字検出位置に矩形を描画した image を取得
@@ -146,7 +146,9 @@ class TextObservationViewController: UIViewController {
             
             if let cropped = image.cropping(to: rectReversed) {
                 self.detectedImage = cropped
-                self.detectedImageView.image = UIImage(cgImage: cropped)
+                DispatchQueue.main.sync {
+                    self.detectedImageView.image = UIImage(cgImage: cropped)
+                }
             }
         }
         
@@ -185,8 +187,10 @@ extension TextObservationViewController : AVCaptureVideoDataOutputSampleBufferDe
                 else { return }
             let foreImage = CIImage(cgImage: paddedImage)
             let compositedImage = foreImage.composited(over: backImage)
-            self?.previewImageView.image = UIImage(ciImage: compositedImage)
-            self?.showFastText()
+            DispatchQueue.main.sync {
+                self?.previewImageView.image = UIImage(ciImage: compositedImage)
+                self?.showFastText()
+            }
         }
     }
 }
