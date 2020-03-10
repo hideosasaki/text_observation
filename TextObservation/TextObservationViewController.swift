@@ -33,13 +33,21 @@ class TextObservationViewController: UIViewController {
     private var isCaptureing: Bool = false
     
     @IBAction func captureButtonTouchDown(_ sender: UIButton) {
-        guard let image = detectedImage else { return }
+        if isCaptureing { return }
+        guard let image = detectedImage else {
+            accurateTextLabel.text = ""
+            return
+        }
         isCaptureing = true
         accurateTextLabel.text = "...Captureing..."
         DispatchQueue.global(qos: .userInitiated).async {
             self.read(image, recognitionLevel: .accurate) { [weak self] textObservations in
                 DispatchQueue.main.sync {
-                    self?.accurateTextLabel.text = textObservations.first?.topCandidates(1).first?.string
+                    if let t = textObservations.first {
+                        self?.accurateTextLabel.text = t.topCandidates(1).first?.string
+                    } else {
+                        self?.accurateTextLabel.text = "[capture failed]" + (self?.fastText ?? "")
+                    }
                 }
                 self?.isCaptureing = false
             }
@@ -160,6 +168,10 @@ class TextObservationViewController: UIViewController {
             drawMarker(t)
         } else {
             fastText = ""
+            self.detectedImage = nil
+            DispatchQueue.main.sync {
+                self.detectedImageView.image = nil
+            }
         }
         return context.makeImage()
     }
